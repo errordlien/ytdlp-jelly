@@ -46,11 +46,17 @@ jobs:
           cd artifacts/plugin
           zip -r "../ytdlp-jelly_${{ steps.vars.outputs.version }}.zip" .
 
+      - name: Compute checksum
+        id: checksum
+        run: |
+          echo "md5=$(md5sum artifacts/ytdlp-jelly_${{ steps.vars.outputs.version }}.zip | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
       - name: Update manifest.json
         env:
           VERSION: ${{ steps.vars.outputs.version }}
           TIMESTAMP: ${{ steps.vars.outputs.timestamp }}
           TARGET_ABI: ${{ steps.vars.outputs.targetAbi }}
+          CHECKSUM: ${{ steps.checksum.outputs.md5 }}
           SOURCE_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/ytdlp-jelly_${{ steps.vars.outputs.version }}.zip
         run: |
           python3 - <<'PYEOF'
@@ -59,6 +65,7 @@ jobs:
           version    = os.environ["VERSION"]
           timestamp  = os.environ["TIMESTAMP"]
           source_url = os.environ["SOURCE_URL"]
+          checksum   = os.environ["CHECKSUM"]
 
           with open("manifest.json") as f:
               manifest = json.load(f)
@@ -71,6 +78,7 @@ jobs:
               "changelog": f"Release {version}.",
               "targetAbi": os.environ["TARGET_ABI"],
               "sourceUrl": source_url,
+              "checksum":  checksum,
               "timestamp": timestamp,
           }
 
