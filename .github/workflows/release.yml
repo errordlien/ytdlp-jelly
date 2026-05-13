@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Set release version
+        id: vars
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build plugin
+        run: |
+          dotnet publish YtDlpJellyfin.Plugin/YtDlpJellyfin.Plugin.csproj \
+            -c Release \
+            -o artifacts/plugin \
+            /p:Version="${{ steps.vars.outputs.version }}"
+
+      - name: Create release archive
+        run: |
+          cd artifacts/plugin
+          zip -r "../ytdlp-jelly_${{ steps.vars.outputs.version }}.zip" .
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/ytdlp-jelly_${{ steps.vars.outputs.version }}.zip
