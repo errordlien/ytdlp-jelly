@@ -97,7 +97,11 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
 
     private static string GetDownloadUrl(string? version)
     {
-        var assetName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "yt-dlp.exe" : "yt-dlp";
+        var assetName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? "yt-dlp.exe"
+            : RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
+                ? "yt-dlp_linux"
+                : "yt-dlp";
         return string.IsNullOrWhiteSpace(version)
             ? $"https://github.com/yt-dlp/yt-dlp/releases/latest/download/{assetName}"
             : $"https://github.com/yt-dlp/yt-dlp/releases/download/{version}/{assetName}";
