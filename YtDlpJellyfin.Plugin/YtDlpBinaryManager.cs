@@ -5,9 +5,9 @@ using Microsoft.Extensions.Logging;
 
 namespace YtDlpJellyfin.Plugin;
 
-public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogger logger)
+public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogger logger) : IDisposable
 {
-    private static readonly HttpClient HttpClient = new();
+    private readonly HttpClient _httpClient = new();
     private readonly string _binaryDirectoryPath = Path.Combine(applicationPaths.ProgramDataPath, "plugins", "ytdlp-jelly", "bin");
 
     public string BinaryPath => Path.Combine(_binaryDirectoryPath, RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "yt-dlp.exe" : "yt-dlp");
@@ -67,7 +67,7 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
         var downloadUrl = GetDownloadUrl(version);
         logger.LogInformation("Downloading yt-dlp from {Url}", downloadUrl);
 
-        await using var stream = await HttpClient.GetStreamAsync(downloadUrl, cancellationToken).ConfigureAwait(false);
+        await using var stream = await _httpClient.GetStreamAsync(downloadUrl, cancellationToken).ConfigureAwait(false);
         await using var fileStream = File.Create(BinaryPath);
         await stream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
 
@@ -100,12 +100,12 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
         using var process = new Process { StartInfo = processStartInfo };
         process.Start();
 
-        var standardOutput = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var standardError = process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+        var standardOutputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var standardErrorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+        await Task.WhenAll(standardOutputTask, standardErrorTask, process.WaitForExitAsync(cancellationToken)).ConfigureAwait(false);
 
-        var output = await standardOutput.ConfigureAwait(false);
-        var error = await standardError.ConfigureAwait(false);
+        var output = await standardOutputTask.ConfigureAwait(false);
+        var error = await standardErrorTask.ConfigureAwait(false);
 
         if (process.ExitCode != 0)
         {
@@ -113,5 +113,10 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
         }
 
         return output;
+    }
+
+    public void Dispose()
+    {
+        _httpClient.Dispose();
     }
 }

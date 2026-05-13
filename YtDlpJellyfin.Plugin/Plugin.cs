@@ -22,7 +22,7 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         _logger = logger;
         _binaryManager = new YtDlpBinaryManager(applicationPaths, logger);
         Instance = this;
-        _timer = new Timer(_ => _ = CheckForUpdateAsync(), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        _timer = new Timer(TimerCallback, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
     }
 
     public override string Name => "yt-dlp manager";
@@ -41,7 +41,13 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public void Dispose()
     {
         _timer.Dispose();
+        _binaryManager.Dispose();
         _updateLock.Dispose();
+    }
+
+    private void TimerCallback(object? state)
+    {
+        _ = CheckForUpdateAsync();
     }
 
     private async Task CheckForUpdateAsync()
