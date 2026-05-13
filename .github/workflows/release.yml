@@ -23,7 +23,16 @@ jobs:
 
       - name: Set release version
         id: vars
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+          abi_base=$(grep -oP '(?<=<PackageReference Include="Jellyfin.Controller" Version=")[^"]+' \
+            YtDlpJellyfin.Plugin/YtDlpJellyfin.Plugin.csproj)
+          if [[ -z "$abi_base" ]]; then
+            echo "::error::Could not determine Jellyfin.Controller version from .csproj"
+            exit 1
+          fi
+          echo "targetAbi=${abi_base}.0" >> "$GITHUB_OUTPUT"
 
       - name: Build plugin
         run: |
@@ -36,6 +45,55 @@ jobs:
         run: |
           cd artifacts/plugin
           zip -r "../ytdlp-jelly_${{ steps.vars.outputs.version }}.zip" .
+
+      - name: Update manifest.json
+        env:
+          VERSION: ${{ steps.vars.outputs.version }}
+          TIMESTAMP: ${{ steps.vars.outputs.timestamp }}
+          TARGET_ABI: ${{ steps.vars.outputs.targetAbi }}
+          SOURCE_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/ytdlp-jelly_${{ steps.vars.outputs.version }}.zip
+        run: |
+          python3 - <<'PYEOF'
+          import json, os
+
+          version    = os.environ["VERSION"]
+          timestamp  = os.environ["TIMESTAMP"]
+          source_url = os.environ["SOURCE_URL"]
+
+          with open("manifest.json") as f:
+              manifest = json.load(f)
+
+          if not manifest or not isinstance(manifest, list):
+              raise ValueError("manifest.json must be a non-empty JSON array")
+
+          new_entry = {
+              "version":   version,
+              "changelog": f"Release {version}.",
+              "targetAbi": os.environ["TARGET_ABI"],
+              "sourceUrl": source_url,
+              "timestamp": timestamp,
+          }
+
+          versions = manifest[0]["versions"]
+          if not any(v["version"] == version for v in versions):
+              versions.insert(0, new_entry)
+
+          with open("manifest.json", "w") as f:
+              json.dump(manifest, f, indent=2)
+              f.write("\n")
+          PYEOF
+
+      - name: Commit and push updated manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp manifest.json /tmp/manifest.json
+          git fetch origin main
+          git checkout -b manifest-update origin/main
+          cp /tmp/manifest.json manifest.json
+          git add manifest.json
+          git diff --cached --quiet || git commit -m "chore: update manifest for ${{ github.ref_name }}"
+          git push origin manifest-update:refs/heads/main
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
