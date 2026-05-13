@@ -8,6 +8,13 @@
     "guid": "8ea615e2-ba93-40a7-a44d-b53dbe985058",
     "versions": [
       {
+        "version": "0.0.0.1",
+        "changelog": "Release 0.0.0.1.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/errordlien/ytdlp-jelly/releases/download/v0.0.0.1/ytdlp-jelly_0.0.0.1.zip",
+        "timestamp": "2026-05-13T22:14:03Z"
+      },
+      {
         "version": "1.0.0.0",
         "changelog": "Initial release.",
         "targetAbi": "10.11.8.0",
