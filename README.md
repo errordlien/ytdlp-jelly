@@ -54,13 +54,53 @@ Once installed and triggered, the `yt-dlp` binary is placed at:
 
 > **Note:** The exact path depends on your `ProgramDataPath`. The path above assumes the default Jellyfin data directory.
 
+## Shell / PATH export
+
+After each download or update the plugin automatically tries to make `yt-dlp` available without a full path:
+
+| Platform | What the plugin does |
+|---|---|
+| **Linux / macOS** | Creates a symlink `/usr/local/bin/yt-dlp` → the binary. Requires Jellyfin to be running with write access to `/usr/local/bin` (e.g. as root or via `sudo`). |
+| **Windows** | Appends the binary directory to the machine-level `PATH` environment variable. Requires Jellyfin to be running with administrator privileges. |
+
+If the plugin cannot write to the target location it logs a warning and falls back gracefully. In that case you can either:
+
+- Run Jellyfin with the necessary privileges so the plugin can set up the symlink / PATH entry, **or**
+- Add the binary directory to your PATH manually:
+
+  ```bash
+  # Linux / macOS — add to ~/.bashrc, ~/.zshrc, etc.
+  export PATH="/var/lib/jellyfin/plugins/ytdlp-jelly/bin:$PATH"
+  ```
+
+  ```powershell
+  # Windows PowerShell (run as administrator)
+  [System.Environment]::SetEnvironmentVariable(
+      "PATH",
+      $env:PATH + ";$env:PROGRAMDATA\Jellyfin\Server\plugins\ytdlp-jelly\bin",
+      "Machine"
+  )
+  ```
+
+Once the PATH is set up you can simply call:
+
+```bash
+yt-dlp -g "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+```
+
 ## Using yt-dlp to stream videos in Jellyfin via .strm files
 
 Jellyfin supports [`.strm` files](https://jellyfin.org/docs/general/server/media/external-files) — plain text files containing a single media URL that Jellyfin treats as a video. You can use the `yt-dlp` binary installed by this plugin to obtain a direct stream URL for any site yt-dlp supports (YouTube, Twitch VODs, etc.) and save it as a `.strm` file.
 
 ### Step 1 – Get the direct stream URL
 
-Run the plugin-installed `yt-dlp` binary with the `-g` flag to print the best available stream URL without downloading the file:
+Run `yt-dlp` with the `-g` flag to print the best available stream URL without downloading the file. If the plugin successfully exported `yt-dlp` to your PATH (see [Shell / PATH export](#shell--path-export) above) you can run it directly:
+
+```bash
+yt-dlp -g "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+```
+
+If the binary is not yet on your PATH, use the full path instead:
 
 ```bash
 # Linux / macOS
