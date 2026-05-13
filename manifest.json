@@ -12,14 +12,8 @@
         "changelog": "Release 0.0.0.1.",
         "targetAbi": "10.11.8.0",
         "sourceUrl": "https://github.com/errordlien/ytdlp-jelly/releases/download/v0.0.0.1/ytdlp-jelly_0.0.0.1.zip",
+        "checksum": "7e0e319629907b0a1684f8f341087254",
         "timestamp": "2026-05-13T22:14:03Z"
-      },
-      {
-        "version": "1.0.0.0",
-        "changelog": "Initial release.",
-        "targetAbi": "10.11.8.0",
-        "sourceUrl": "https://github.com/errordlien/ytdlp-jelly/releases/download/v1.0.0.0/ytdlp-jelly_1.0.0.0.zip",
-        "timestamp": "2026-05-13T00:00:00Z"
       }
     ]
   }
