@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>yt-dlp manager</title>
+</head>
+<body>
+<div data-role="page" class="page type-interior pluginConfigurationPage ytdlpJellyfinPage" data-require="emby-input,emby-button,emby-select">
+    <div data-role="content">
+        <div class="content-primary">
+            <form class="ytdlpJellyfinConfigForm">
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="updateMode">Update Mode</label>
+                    <select is="emby-select" id="updateMode" name="updateMode">
+                        <option value="0">Disabled</option>
+                        <option value="1">Latest (always update)</option>
+                        <option value="2">Specific version</option>
+                    </select>
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="specificVersion">Specific Version Tag (example: 2026.05.12)</label>
+                    <input is="emby-input" id="specificVersion" name="specificVersion" type="text" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="updateIntervalHours">Update Interval (hours)</label>
+                    <input is="emby-input" id="updateIntervalHours" name="updateIntervalHours" type="number" min="1" />
+                </div>
+                <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                    <span>Save</span>
+                </button>
+            </form>
+        </div>
+    </div>
+    <script type="text/javascript">
+        (() => {
+            const pluginId = '8ea615e2-ba93-40a7-a44d-b53dbe985058';
+            const page = document.querySelector('.ytdlpJellyfinPage');
+            const form = page.querySelector('.ytdlpJellyfinConfigForm');
+
+            function loadConfiguration() {
+                ApiClient.getPluginConfiguration(pluginId).then(config => {
+                    page.querySelector('#updateMode').value = String(config.UpdateMode ?? 1);
+                    page.querySelector('#specificVersion').value = config.SpecificVersion || '';
+                    page.querySelector('#updateIntervalHours').value = String(config.UpdateIntervalHours || 24);
+                });
+            }
+
+            form.addEventListener('submit', event => {
+                event.preventDefault();
+                ApiClient.getPluginConfiguration(pluginId).then(config => {
+                    config.UpdateMode = parseInt(page.querySelector('#updateMode').value, 10);
+                    config.SpecificVersion = page.querySelector('#specificVersion').value.trim();
+                    config.UpdateIntervalHours = Math.max(1, parseInt(page.querySelector('#updateIntervalHours').value || '24', 10));
+                    ApiClient.updatePluginConfiguration(pluginId, config).then(() => {
+                        Dashboard.processPluginConfigurationUpdateResult();
+                    });
+                });
+            });
+
+            page.addEventListener('pageshow', loadConfiguration);
+            loadConfiguration();
+        })();
+    </script>
+</div>
+</body>
+</html>
