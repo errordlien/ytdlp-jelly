@@ -68,12 +68,27 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
         logger.LogInformation("Downloading yt-dlp from {Url}", downloadUrl);
 
         await using var stream = await _httpClient.GetStreamAsync(downloadUrl, cancellationToken).ConfigureAwait(false);
-        await using var fileStream = File.Create(BinaryPath);
-        await stream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+        var tempPath = $"{BinaryPath}.tmp";
+
+        try
+        {
+            await using var fileStream = File.Create(tempPath);
+            await stream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+            File.Move(tempPath, BinaryPath, overwrite: true);
+        }
+        catch
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+
+            throw;
+        }
 
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            File.SetUnixFileMode(BinaryPath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+            File.SetUnixFileMode(BinaryPath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute);
         }
     }
 

@@ -13,6 +13,7 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     private readonly SemaphoreSlim _updateLock = new(1, 1);
     private readonly YtDlpBinaryManager _binaryManager;
     private readonly Timer _timer;
+    private bool _disposed;
 
     public static Plugin? Instance { get; private set; }
 
@@ -40,9 +41,19 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
     public void Dispose()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
         _timer.Dispose();
         _binaryManager.Dispose();
         _updateLock.Dispose();
+        if (ReferenceEquals(Instance, this))
+        {
+            Instance = null;
+        }
     }
 
     private void TimerCallback(object? state)
