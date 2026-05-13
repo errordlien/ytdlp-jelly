@@ -45,6 +45,7 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
                 }
 
                 await RunProcessAsync(BinaryPath, "-U", cancellationToken).ConfigureAwait(false);
+                TryExportToPath();
                 return;
             default:
                 return;
@@ -90,6 +91,8 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
         {
             File.SetUnixFileMode(BinaryPath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute);
         }
+
+        TryExportToPath();
     }
 
     private static string GetDownloadUrl(string? version)
@@ -128,6 +131,81 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
         }
 
         return output;
+    }
+
+    private void TryExportToPath()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            TryAddToWindowsPath();
+        }
+        else
+        {
+            TryCreateUnixSymlink();
+        }
+    }
+
+    private void TryCreateUnixSymlink()
+    {
+        const string symlinkPath = "/usr/local/bin/yt-dlp";
+        try
+        {
+            var existingInfo = new FileInfo(symlinkPath);
+            if (existingInfo.Exists || Path.Exists(symlinkPath))
+            {
+                var linkTarget = existingInfo.ResolveLinkTarget(returnFinalTarget: false)?.FullName;
+                if (string.Equals(linkTarget, BinaryPath, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                if (linkTarget is null)
+                {
+                    logger.LogWarning(
+                        "A file already exists at {SymlinkPath} and is not a symlink managed by this plugin. Skipping PATH export.",
+                        symlinkPath);
+                    return;
+                }
+
+                File.Delete(symlinkPath);
+            }
+
+            File.CreateSymbolicLink(symlinkPath, BinaryPath);
+            logger.LogInformation("Created symlink {SymlinkPath} → {BinaryPath} so yt-dlp is available on PATH", symlinkPath, BinaryPath);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Could not create symlink at {SymlinkPath}. To run yt-dlp without the full path, either run Jellyfin with elevated privileges or add {BinaryDir} to your PATH manually.",
+                symlinkPath,
+                _binaryDirectoryPath);
+        }
+    }
+
+    private void TryAddToWindowsPath()
+    {
+        try
+        {
+            var normalizedBinaryDir = Path.GetFullPath(_binaryDirectoryPath);
+            var machinePath = Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.Machine) ?? string.Empty;
+            var entries = machinePath.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            if (entries.Any(e => string.Equals(Path.GetFullPath(e), normalizedBinaryDir, StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+
+            var newPath = string.Join(';', entries.Append(normalizedBinaryDir));
+            Environment.SetEnvironmentVariable("PATH", newPath, EnvironmentVariableTarget.Machine);
+            logger.LogInformation("Added {BinaryDir} to the system PATH so yt-dlp is available in any shell", normalizedBinaryDir);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Could not add {BinaryDir} to the system PATH. To run yt-dlp without the full path, add that directory to your PATH manually.",
+                _binaryDirectoryPath);
+        }
     }
 
     public void Dispose()
