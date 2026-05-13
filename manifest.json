@@ -1,0 +1,19 @@
+[
+  {
+    "name": "yt-dlp manager",
+    "description": "Plugin that installs and updates the yt-dlp binary in Jellyfin program data.",
+    "overview": "Manage yt-dlp binary lifecycle inside Jellyfin.",
+    "owner": "errordlien",
+    "category": "General",
+    "guid": "8ea615e2-ba93-40a7-a44d-b53dbe985058",
+    "versions": [
+      {
+        "version": "1.0.0.0",
+        "changelog": "Initial release.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/errordlien/ytdlp-jelly/releases/download/v1.0.0.0/ytdlp-jelly_1.0.0.0.zip",
+        "timestamp": "2026-05-13T00:00:00Z"
+      }
+    ]
+  }
+]
