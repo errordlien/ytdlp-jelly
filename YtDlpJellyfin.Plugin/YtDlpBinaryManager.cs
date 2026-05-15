@@ -29,6 +29,12 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
                     return;
                 }
 
+                if (!IsPreferredInstalledBinary())
+                {
+                    await DownloadBinaryAsync(requestedVersion, cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+
                 var currentVersion = await GetInstalledVersionAsync(cancellationToken).ConfigureAwait(false);
                 if (!string.Equals(currentVersion, requestedVersion, StringComparison.OrdinalIgnoreCase))
                 {
@@ -38,13 +44,19 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
                 return;
             }
             case UpdateMode.Latest:
-                if (!File.Exists(BinaryPath))
+                if (!IsPreferredInstalledBinary())
                 {
                     await DownloadBinaryAsync(version: null, cancellationToken).ConfigureAwait(false);
                     return;
                 }
 
                 await RunProcessAsync(BinaryPath, "-U", cancellationToken).ConfigureAwait(false);
+                if (!IsPreferredInstalledBinary())
+                {
+                    await DownloadBinaryAsync(version: null, cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+
                 TryExportToPath();
                 return;
             default:
@@ -106,6 +118,36 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
         return string.IsNullOrWhiteSpace(version)
             ? $"https://github.com/yt-dlp/yt-dlp/releases/latest/download/{assetName}"
             : $"https://github.com/yt-dlp/yt-dlp/releases/download/{version}/{assetName}";
+    }
+
+    private bool IsPreferredInstalledBinary()
+    {
+        if (!File.Exists(BinaryPath))
+        {
+            return false;
+        }
+
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return true;
+        }
+
+        try
+        {
+            using var stream = File.OpenRead(BinaryPath);
+            Span<byte> header = stackalloc byte[4];
+            var bytesRead = stream.Read(header);
+            return bytesRead == header.Length
+                && header[0] == 0x7F
+                && header[1] == (byte)'E'
+                && header[2] == (byte)'L'
+                && header[3] == (byte)'F';
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to inspect the installed yt-dlp binary at {BinaryPath}", BinaryPath);
+            return false;
+        }
     }
 
     private async Task<string> RunProcessAsync(string fileName, string arguments, CancellationToken cancellationToken)
