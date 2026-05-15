@@ -40,6 +40,9 @@ After installation, go to **Dashboard → Plugins → yt-dlp manager** to config
 | **Update Mode** | `Disabled` – do nothing; `Latest` – keep yt-dlp at the latest release; `Specific Version` – pin to an exact release tag (e.g. `2024.04.09`). |
 | **Update Interval (hours)** | How often (in hours) the plugin checks for updates. Default is `24`. |
 | **Specific Version** | The yt-dlp release tag to pin to when using *Specific Version* mode (e.g. `2024.04.09`). |
+| **Cookies File Path** | Optional path used with `--cookies <file>` when you run yt-dlp manually for sites requiring authentication. |
+| **Cookies From Browser** | Optional browser selector used with `--cookies-from-browser <browser>` (for example `firefox`, `chrome`, or `edge`). |
+| **Additional yt-dlp Arguments** | Optional extra command-line switches to include in your own yt-dlp commands for `.strm` URL resolution. |
 
 The plugin checks for updates in the background starting one minute after Jellyfin starts, then repeats on the configured interval.
 
@@ -111,6 +114,26 @@ If the binary is not yet on your PATH, use the full path instead:
 ```
 
 The command prints a direct HTTPS URL to the video stream.
+
+If your source requires login/session cookies, use one of yt-dlp's cookie mechanisms:
+
+```bash
+# Use a cookies.txt / netscape-format cookie file
+yt-dlp --cookies /path/to/cookies.txt -g "https://example.com/protected/video"
+
+# Or extract cookies directly from a browser profile
+yt-dlp --cookies-from-browser firefox -g "https://example.com/protected/video"
+```
+
+If you already have a `.strm` file containing the original page URL, feed that URL back into yt-dlp and add any required switches:
+
+```bash
+# Linux / macOS: parse URL from .strm and resolve direct stream URL
+yt-dlp --cookies /path/to/cookies.txt --no-playlist -g "$(cat /path/to/video.strm)"
+
+# Windows PowerShell: parse URL from .strm and resolve direct stream URL
+yt-dlp --cookies-from-browser edge --no-playlist -g (Get-Content "C:\path\to\video.strm" -TotalCount 1)
+```
 
 ### Step 2 – Create the .strm file
 
