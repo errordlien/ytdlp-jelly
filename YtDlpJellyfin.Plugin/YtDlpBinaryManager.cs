@@ -49,6 +49,7 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
                 }
 
                 await RunProcessAsync(BinaryPath, "-U", cancellationToken).ConfigureAwait(false);
+                // Self-update can replace the file contents, so verify Linux still has the standalone binary afterwards.
                 if (await EnsurePreferredBinaryAsync(version: null, cancellationToken).ConfigureAwait(false))
                 {
                     return;
@@ -144,9 +145,8 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
         {
             using var stream = File.OpenRead(BinaryPath);
             Span<byte> header = stackalloc byte[4];
-            var bytesRead = stream.Read(header);
-            return bytesRead == header.Length
-                && header[0] == 0x7F
+            stream.ReadExactly(header);
+            return header[0] == 0x7F
                 && header[1] == (byte)'E'
                 && header[2] == (byte)'L'
                 && header[3] == (byte)'F';
