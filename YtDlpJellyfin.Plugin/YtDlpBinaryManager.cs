@@ -143,13 +143,18 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
 
         try
         {
-            using var stream = File.OpenRead(BinaryPath);
+            using var stream = new FileStream(BinaryPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             Span<byte> header = stackalloc byte[4];
             stream.ReadExactly(header);
             return header[0] == 0x7F
                 && header[1] == (byte)'E'
                 && header[2] == (byte)'L'
                 && header[3] == (byte)'F';
+        }
+        catch (EndOfStreamException ex)
+        {
+            logger.LogWarning(ex, "The installed yt-dlp binary at {BinaryPath} is incomplete or corrupted", BinaryPath);
+            return false;
         }
         catch (Exception ex)
         {
