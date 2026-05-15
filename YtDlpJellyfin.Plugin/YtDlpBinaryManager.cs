@@ -29,9 +29,8 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
                     return;
                 }
 
-                if (!IsPreferredInstalledBinary())
+                if (await EnsurePreferredBinaryAsync(requestedVersion, cancellationToken).ConfigureAwait(false))
                 {
-                    await DownloadBinaryAsync(requestedVersion, cancellationToken).ConfigureAwait(false);
                     return;
                 }
 
@@ -44,16 +43,14 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
                 return;
             }
             case UpdateMode.Latest:
-                if (!IsPreferredInstalledBinary())
+                if (await EnsurePreferredBinaryAsync(version: null, cancellationToken).ConfigureAwait(false))
                 {
-                    await DownloadBinaryAsync(version: null, cancellationToken).ConfigureAwait(false);
                     return;
                 }
 
                 await RunProcessAsync(BinaryPath, "-U", cancellationToken).ConfigureAwait(false);
-                if (!IsPreferredInstalledBinary())
+                if (await EnsurePreferredBinaryAsync(version: null, cancellationToken).ConfigureAwait(false))
                 {
-                    await DownloadBinaryAsync(version: null, cancellationToken).ConfigureAwait(false);
                     return;
                 }
 
@@ -118,6 +115,17 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
         return string.IsNullOrWhiteSpace(version)
             ? $"https://github.com/yt-dlp/yt-dlp/releases/latest/download/{assetName}"
             : $"https://github.com/yt-dlp/yt-dlp/releases/download/{version}/{assetName}";
+    }
+
+    private async Task<bool> EnsurePreferredBinaryAsync(string? version, CancellationToken cancellationToken)
+    {
+        if (IsPreferredInstalledBinary())
+        {
+            return false;
+        }
+
+        await DownloadBinaryAsync(version, cancellationToken).ConfigureAwait(false);
+        return true;
     }
 
     private bool IsPreferredInstalledBinary()
