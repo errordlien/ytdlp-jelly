@@ -25,6 +25,18 @@
                     <label class="inputLabel inputLabelUnfocused" for="updateIntervalHours">Update Interval (hours)</label>
                     <input is="emby-input" id="updateIntervalHours" name="updateIntervalHours" type="number" min="1" />
                 </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="cookiesFilePath">Cookies File Path (for --cookies)</label>
+                    <input is="emby-input" id="cookiesFilePath" name="cookiesFilePath" type="text" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="cookiesFromBrowser">Cookies From Browser (for --cookies-from-browser)</label>
+                    <input is="emby-input" id="cookiesFromBrowser" name="cookiesFromBrowser" type="text" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="additionalYtDlpArguments">Additional yt-dlp Arguments (optional)</label>
+                    <input is="emby-input" id="additionalYtDlpArguments" name="additionalYtDlpArguments" type="text" />
+                </div>
                 <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                     <span>Save</span>
                 </button>
@@ -42,6 +54,9 @@
                     page.querySelector('#updateMode').value = String(config.UpdateMode ?? 1);
                     page.querySelector('#specificVersion').value = config.SpecificVersion || '';
                     page.querySelector('#updateIntervalHours').value = String(config.UpdateIntervalHours || 24);
+                    page.querySelector('#cookiesFilePath').value = config.CookiesFilePath || '';
+                    page.querySelector('#cookiesFromBrowser').value = config.CookiesFromBrowser || '';
+                    page.querySelector('#additionalYtDlpArguments').value = config.AdditionalYtDlpArguments || '';
                 });
             }
 
@@ -51,6 +66,9 @@
                     config.UpdateMode = parseInt(page.querySelector('#updateMode').value, 10);
                     config.SpecificVersion = page.querySelector('#specificVersion').value.trim();
                     config.UpdateIntervalHours = Math.max(1, parseInt(page.querySelector('#updateIntervalHours').value || '24', 10));
+                    config.CookiesFilePath = page.querySelector('#cookiesFilePath').value.trim();
+                    config.CookiesFromBrowser = page.querySelector('#cookiesFromBrowser').value.trim();
+                    config.AdditionalYtDlpArguments = page.querySelector('#additionalYtDlpArguments').value.trim();
                     ApiClient.updatePluginConfiguration(pluginId, config).then(() => {
                         Dashboard.processPluginConfigurationUpdateResult();
                     });
