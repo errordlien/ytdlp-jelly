@@ -29,6 +29,11 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
                     return;
                 }
 
+                if (await EnsurePreferredBinaryAsync(requestedVersion, cancellationToken).ConfigureAwait(false))
+                {
+                    return;
+                }
+
                 var currentVersion = await GetInstalledVersionAsync(cancellationToken).ConfigureAwait(false);
                 if (!string.Equals(currentVersion, requestedVersion, StringComparison.OrdinalIgnoreCase))
                 {
@@ -38,13 +43,18 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
                 return;
             }
             case UpdateMode.Latest:
-                if (!File.Exists(BinaryPath))
+                if (await EnsurePreferredBinaryAsync(version: null, cancellationToken).ConfigureAwait(false))
                 {
-                    await DownloadBinaryAsync(version: null, cancellationToken).ConfigureAwait(false);
                     return;
                 }
 
                 await RunProcessAsync(BinaryPath, "-U", cancellationToken).ConfigureAwait(false);
+                // Self-update can replace the file contents, so verify Linux still has the standalone binary afterwards.
+                if (await EnsurePreferredBinaryAsync(version: null, cancellationToken).ConfigureAwait(false))
+                {
+                    return;
+                }
+
                 TryExportToPath();
                 return;
             default:
@@ -106,6 +116,51 @@ public sealed class YtDlpBinaryManager(IApplicationPaths applicationPaths, ILogg
         return string.IsNullOrWhiteSpace(version)
             ? $"https://github.com/yt-dlp/yt-dlp/releases/latest/download/{assetName}"
             : $"https://github.com/yt-dlp/yt-dlp/releases/download/{version}/{assetName}";
+    }
+
+    private async Task<bool> EnsurePreferredBinaryAsync(string? version, CancellationToken cancellationToken)
+    {
+        if (IsPreferredInstalledBinary())
+        {
+            return false;
+        }
+
+        await DownloadBinaryAsync(version, cancellationToken).ConfigureAwait(false);
+        return true;
+    }
+
+    private bool IsPreferredInstalledBinary()
+    {
+        if (!File.Exists(BinaryPath))
+        {
+            return false;
+        }
+
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return true;
+        }
+
+        try
+        {
+            using var stream = new FileStream(BinaryPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            Span<byte> header = stackalloc byte[4];
+            stream.ReadExactly(header);
+            return header[0] == 0x7F
+                && header[1] == (byte)'E'
+                && header[2] == (byte)'L'
+                && header[3] == (byte)'F';
+        }
+        catch (EndOfStreamException ex)
+        {
+            logger.LogWarning(ex, "The installed yt-dlp binary at {BinaryPath} is incomplete or corrupted", BinaryPath);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to inspect the installed yt-dlp binary at {BinaryPath}", BinaryPath);
+            return false;
+        }
     }
 
     private async Task<string> RunProcessAsync(string fileName, string arguments, CancellationToken cancellationToken)

@@ -5,6 +5,7 @@ A Jellyfin plugin that automatically downloads and keeps the [`yt-dlp`](https://
 ## Features
 
 - Downloads the `yt-dlp` binary automatically into Jellyfin program data.
+- On Linux, prefers the standalone `yt-dlp_linux` release so `yt-dlp` does not depend on a system `python3`.
 - Supports update modes from plugin configuration:
   - `Disabled`
   - `Latest` (runs `yt-dlp -U` on schedule)
